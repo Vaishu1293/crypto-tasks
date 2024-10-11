@@ -104,7 +104,6 @@ const getNFTMetaData = async (req, res) => {
   }
 };
 
-
 export {
   getNFTMetaData
 }
