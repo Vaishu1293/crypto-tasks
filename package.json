@@ -11,14 +11,18 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@helia/unixfs": "^4.0.0",
     "axios": "^1.7.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "env-cmd": "^10.1.0",
     "express": "^4.21.0",
+    "helia": "^5.0.0",
+    "ipfs-http-client": "^60.0.1",
     "jsonwebtoken": "^9.0.2",
+    "kubo": "^0.30.0",
     "mongoose": "^8.7.0",
-    "moralis": "^2.27.2",
+    "moralis": "^2.7.4",
     "web3": "^4.13.0"
   },
   "devDependencies": {

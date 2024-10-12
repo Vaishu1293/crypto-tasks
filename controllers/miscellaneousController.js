@@ -1,8 +1,15 @@
 import NftMetadata from '../models/NFTMetadataModel.js';
 import Web3 from 'web3';
-import axios from 'axios';
 import Moralis from 'moralis';
 import { EvmChain } from '@moralisweb3/common-evm-utils';
+import DataModel from '../models/dataModel.js'; // Adjusted to use ES6 imports
+import ipfsModel from '../models/ipfsModel.js';
+// controllers/ipfsInfuraController.js
+import https from 'https';
+
+import { exec } from 'child_process';
+import fs from 'fs';
+import { path as kuboPath } from 'kubo'; // Path to the Kubo binary
 
 // Web3 instance connected to Infura (Sepolia testnet)
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.INFURA_SEPI_URL));
@@ -104,7 +111,139 @@ const getNFTMetaData = async (req, res) => {
   }
 };
 
+const storeData = async (req, res) => {
+  try {
+    const textData = req.body.textData || "Default text data"; // The text data you want to store
+
+    // Convert text data to a buffer to send with the request
+    const postData = Buffer.from(textData, 'utf-8');
+
+    // Define the Infura API endpoint and request options
+    const options = {
+      host: 'ipfs.infura.io',
+      port: 5001,
+      path: '/api/v0/add',
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${process.env.INFURA_API_KEY}:${process.env.INFURA_API_SECRET}`).toString('base64'),
+        'Content-Type': 'multipart/form-data',
+        'Content-Length': postData.length
+      }
+    };
+
+    // Create the request inside the try block
+    const ipfsReq = https.request(options, (ipfsRes) => {
+      let body = '';
+      ipfsRes.on('data', (chunk) => {
+        body += chunk;
+      });
+
+      ipfsRes.on('end', () => {
+        console.log('Response:', body);
+        // Send back the IPFS hash to the user
+        res.status(200).json({ success: true, ipfsHash: body });
+      });
+    });
+
+    ipfsReq.on('error', (e) => {
+      console.error(`Error: ${e.message}`);
+      res.status(500).json({ success: false, message: e.message });
+    });
+
+    // Write the data to the request body
+    ipfsReq.write(postData);
+    ipfsReq.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to store data on IPFS via Infura', error });
+  }
+};
+
+const storeKuboData = async (req, res) => {
+  try {
+    // Get text data from the request body
+    const { textData } = req.body;
+
+    // Validate if text data is provided
+    if (!textData) {
+      return res.status(400).json({ success: false, message: "Text data is required" });
+    }
+
+    // Write the text data to a temporary file
+    fs.writeFileSync('temp.txt', textData, 'utf8');
+
+    // Use the `ipfs add` command to add the file to IPFS via Kubo
+    exec(`${kuboPath()} add temp.txt`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error executing Kubo: ${error}`);
+        return res.status(500).json({ success: false, message: 'Failed to store data on IPFS', error });
+      }
+
+      // Even if there's something in stderr (like progress), it doesn't necessarily mean failure
+      if (stderr && stderr.includes('error')) {
+        console.error(`Error: ${stderr}`);
+        return res.status(500).json({ success: false, message: 'Error with IPFS command', error: stderr });
+      }
+
+      // Extract and return the IPFS hash (CID)
+      const ipfsHash = stdout.trim().split(' ')[1]; // Extracting the hash from stdout
+      console.log(`IPFS Hash: ${ipfsHash}`);
+
+      try {
+        const ipfsData = new ipfsModel({ ipfsHash });
+        ipfsData.save();
+        console.log('IPFS hash saved to MongoDB');
+      } catch (dbError) {
+        console.error(`Error saving hash to MongoDB: ${dbError}`);
+        return res.status(500).json({ success: false, message: 'Error saving hash to MongoDB', error: dbError });
+      }
+
+      // Send response back with the IPFS hash
+      return res.status(200).json({ success: true, ipfsHash });
+    });
+  } catch (error) {
+    console.error(`Error in storeKuboData: ${error}`);
+    return res.status(500).json({ success: false, message: 'Server error', error });
+  }
+};
+
+const retrieveKuboData = async (req, res) => {
+  try {
+    // Get the hash from the request params
+    const { hash } = req.body;
+
+    // Find the hash in MongoDB
+    const ipfsData = await ipfsModel.findOne({ ipfsHash: hash });
+
+    if (!ipfsData) {
+      return res.status(404).json({ success: false, message: 'Hash not found in database' });
+    }
+
+    // Use the `ipfs cat` command to retrieve the file from IPFS using the hash
+    exec(`${kuboPath()} cat ${hash}`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error retrieving data from IPFS: ${error}`);
+        return res.status(500).json({ success: false, message: 'Failed to retrieve data from IPFS', error });
+      }
+
+      if (stderr) {
+        console.error(`Error: ${stderr}`);
+        return res.status(500).json({ success: false, message: 'Error with IPFS command', error: stderr });
+      }
+
+      // Send the retrieved data back to the client
+      return res.status(200).json({ success: true, data: stdout });
+    });
+  } catch (error) {
+    console.error(`Error in retrieveKuboData: ${error}`);
+    return res.status(500).json({ success: false, message: 'Server error', error });
+  }
+};
+
 export {
-  getNFTMetaData
+  getNFTMetaData,
+  storeData,
+  storeKuboData,
+  retrieveKuboData
 }
 

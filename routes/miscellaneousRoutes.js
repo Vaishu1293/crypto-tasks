@@ -1,6 +1,5 @@
 import express from 'express';
-import { getNFTMetaData } from '../controllers/miscellaneousController.js';
-// import { createTransaction, getTransactions } from '../controllers/transactionsController.js';
+import { getNFTMetaData, storeData, storeKuboData, retrieveKuboData } from '../controllers/miscellaneousController.js';
 // const requireAuth = require("../middleware/requireAuth.js");
 
 const router = express.Router();
@@ -9,7 +8,10 @@ const router = express.Router();
 
 router.post("/nft", getNFTMetaData);
 
+// Route to store data in IPFS
+router.post('/store', storeKuboData);
 
+router.post('/get-ipfs-data', retrieveKuboData);
 
 const miscellaneousRoutes = router
 
