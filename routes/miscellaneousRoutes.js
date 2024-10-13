@@ -1,5 +1,5 @@
 import express from 'express';
-import { getNFTMetaData, storeData, storeKuboData, retrieveKuboData } from '../controllers/miscellaneousController.js';
+import { getNFTMetaData, storeKuboData, retrieveKuboData, getTokenBalance } from '../controllers/miscellaneousController.js';
 // const requireAuth = require("../middleware/requireAuth.js");
 
 const router = express.Router();
@@ -12,6 +12,8 @@ router.post("/nft", getNFTMetaData);
 router.post('/store', storeKuboData);
 
 router.post('/get-ipfs-data', retrieveKuboData);
+
+router.post('/get-token-balance', getTokenBalance)
 
 const miscellaneousRoutes = router
 

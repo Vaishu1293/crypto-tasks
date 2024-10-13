@@ -2,14 +2,12 @@ import NftMetadata from '../models/NFTMetadataModel.js';
 import Web3 from 'web3';
 import Moralis from 'moralis';
 import { EvmChain } from '@moralisweb3/common-evm-utils';
-import DataModel from '../models/dataModel.js'; // Adjusted to use ES6 imports
 import ipfsModel from '../models/ipfsModel.js';
-// controllers/ipfsInfuraController.js
 import https from 'https';
-
 import { exec } from 'child_process';
 import fs from 'fs';
 import { path as kuboPath } from 'kubo'; // Path to the Kubo binary
+import axios from 'axios';
 
 // Web3 instance connected to Infura (Sepolia testnet)
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.INFURA_SEPI_URL));
@@ -240,10 +238,39 @@ const retrieveKuboData = async (req, res) => {
   }
 };
 
+const getTokenBalance = async (req, res) => {
+
+  const { contractAddress, walletAddress } = req.body;
+
+  console.log(contractAddress);
+
+  try {
+    const url = `https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=${contractAddress}&address=${walletAddress}&tag=latest&apikey=${process.env.ETHERSCAN_API_KEY}`;
+
+    const response = await axios.get(url);
+    const data = response.data;
+
+    if (data.status === "1") {
+      // The balance is usually in the smallest denomination (e.g., wei for Ethereum-based tokens)
+      console.log(`Token Balance: ${data.result}`);
+
+      // Send the retrieved data back to the client
+      return res.status(200).json({ success: true, tokenBalance: data.result });
+
+    } else {
+      console.log('Error fetching balance:', data.message);
+      return res.status(500).json({ success: false, message: "Couldn't retrive token balance", error: data.message });
+    }
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Couldn't call the api", error: error });
+  }
+};
+
 export {
   getNFTMetaData,
   storeData,
   storeKuboData,
-  retrieveKuboData
+  retrieveKuboData,
+  getTokenBalance
 }
 
