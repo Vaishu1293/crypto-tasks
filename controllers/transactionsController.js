@@ -1,12 +1,46 @@
 import TransactionModel from '../models/transactionsModel.js';
 import Web3 from 'web3';
 import axios from 'axios';
+import fs from 'fs';
+import simpleTransaction from '../models/simpleTransactionModel.js';
 
 // Web3 instance connected to Infura (Sepolia testnet)
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.INFURA_SEPI_URL));
 const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
 web3.eth.accounts.wallet.add(account);
 web3.eth.defaultAccount = account.address;
+
+const getContractABI = async () => {
+  try {
+    const response = await axios.get(`https://api-sepolia.etherscan.io/api`, {
+      params: {
+        module: 'contract',
+        action: 'getabi',
+        address: process.env.CONTRACT_ADDRESS,
+        apikey: process.env.ETHERSCAN_API_KEY,  // Etherscan API key from your .env
+      },
+    });
+
+    console.log(response);
+
+    if (response.data.status === '1') {
+      // ABI fetched successfully
+      console.log(response.data.result);
+      return JSON.parse(response.data.result);
+    } else {
+      throw new Error('Error fetching ABI from Etherscan');
+    }
+  } catch (error) {
+    console.error('Error fetching ABI:', error.message);
+    throw error;
+  }
+}
+
+// Load the contract ABI and address from JSON file (adjust the path if needed)
+// const contractABI = JSON.parse(fs.readFileSync(`${__dirname}/../MyToken.json`, 'utf8'));
+const contractABI = await getContractABI();
+const contractAddress = process.env.CONTRACT_ADDRESS;
+const myTokenContract = new web3.eth.Contract(contractABI, contractAddress);
 
 // const createTransaction = async (req, res) => {
 //   const { id, quantity, price, spent, date } = req.body;
@@ -127,7 +161,47 @@ const queryTransactions = async (req, res) => {
   }
 };
 
+const transferTokens = async (req, res) => {
+  const { fromAddress, toAddress, amount } = req.body;
+
+  try {
+    
+
+    // Prepare the transaction
+    const decimals = await myTokenContract.methods.decimals().call();
+    const amountInWei = web3.utils.toWei(amount.toString(), 'ether'); // Adjust the decimals accordingly
+
+    const tx = myTokenContract.methods.transfer(toAddress, amountInWei);
+
+    // Estimate gas and send transaction
+    const gas = await tx.estimateGas({ from: fromAddress });
+    const gasPrice = await web3.eth.getGasPrice();
+
+    const receipt = await tx.send({
+      from: fromAddress,
+      gas,
+      gasPrice,
+    });
+
+    const transaction = new simpleTransaction({
+      fromAddress,
+      toAddress,
+      amount,
+      transactionHash: receipt.transactionHash,
+      status: receipt.status ? 'confirmed' : 'failed',
+    });
+    await transaction.save();
+    console.log("Transaction saved to MongoDB");
+
+    res.status(200).json({ transactionHash: receipt.transactionHash, message: "Transfer successful" });
+  } catch (error) {
+    console.error("Error transferring tokens:", error);
+    res.status(500).json({ message: "Transfer failed", error });
+  }
+}
+
 export {
   getTransactions,
-  queryTransactions
+  queryTransactions,
+  transferTokens
 }

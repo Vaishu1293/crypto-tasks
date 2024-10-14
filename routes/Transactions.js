@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTransactions, queryTransactions } from '../controllers/transactionsController.js';
+import { getTransactions, queryTransactions, transferTokens } from '../controllers/transactionsController.js';
 // const requireAuth = require("../middleware/requireAuth.js");
 
 const router = express.Router();
@@ -12,6 +12,8 @@ router.post('/', getTransactions);
 
 // Route to query transactions by date range
 router.get('/query', queryTransactions);
+
+router.post('/transfer-tokens', transferTokens);
 
 const transactionsRoutes = router
 
