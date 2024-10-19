@@ -6,6 +6,7 @@ import logger from './middleware/logger.js';
 import connectDB from './config/db.js';  // Import DB connection
 import miscellaneousRoutes from './routes/miscellaneousRoutes.js';
 import transactionsRoutes from './routes/Transactions.js';
+import tradeRoutes from './routes/trade.js';
 // const workoutRoutes = require("./routes/workouts.js");
 // const usersRoutes = require("./routes/users.js");
 // const userPortfolio = require("./routes/userPortfolio.js");
@@ -37,6 +38,7 @@ app.use((req, res, next) => {
 app.use("/api/transactions/", transactionsRoutes);
 // app.use("/api/users/", usersRoutes);
 app.use("/api/misc/", miscellaneousRoutes);
+app.use("/api/trade", tradeRoutes);
 
 app.listen(config.port, () => {
     console.log(`Server is running on port ${config.port}`);
