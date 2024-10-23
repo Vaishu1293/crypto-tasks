@@ -15,14 +15,15 @@ const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
 web3.eth.accounts.wallet.add(account);
 web3.eth.defaultAccount
 
+// Start Moralis
+await Moralis.start({
+  apiKey: process.env.MORALIS_API_KEY,
+  // ...and any other configuration if needed
+});
+
 const getNFTMetaData = async (req, res) => {
   try {
-    // Start Moralis
-    await Moralis.start({
-      apiKey: process.env.MORALIS_API_KEY,
-      // ...and any other configuration if needed
-    });
-
+  
     // Get address and tokenId from req.body
     const { address, tokenId } = req.body;
 

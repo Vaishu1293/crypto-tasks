@@ -17,11 +17,11 @@ const app = express();
 connectDB();
 
 // configuration cors
-const corsOptions = {
-  origin: ["http://localhost:5173", "https://api.coingecko.com/"],
-  optionsSuccessStatus: 200,
-};
-app.use(cors(corsOptions));
+// const corsOptions = {
+//   origin: ["http://localhost:5173", "https://api.coingecko.com/", "http://localhost:4200/"],
+//   optionsSuccessStatus: 200,
+// };
+// app.use(cors(corsOptions));
 app.use(cors());
 app.use(express.json());
 app.use(logger);
